@@ -7,11 +7,28 @@ import argparse
 import configparser
 import json
 import requests
+import re
+import unicodedata
 import pandas as pd
 from pathlib import Path
 
 logger = logging.getLogger()
 temps_debut = time.time()
+
+
+def slugify(value, allow_unicode=False):
+    """
+    Convert to ASCII if 'allow_unicode' is False. Convert spaces to hyphens.
+    Remove characters that aren't alphanumerics, underscores, or hyphens.
+    Convert to lowercase. Also strip leading and trailing whitespace.
+    """
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize('NFKC', value)
+    else:
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value).strip().lower()
+    return re.sub(r'[-\s]+', '-', value)
 
 
 def main():
@@ -43,6 +60,7 @@ def main():
     if type == 'owned':
         logger.debug("Type : owned")
         url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={user_id}&format=json"
+        json_dict = requests.get(url).json()
         dict_games = []
         for game in json_dict['response']['games']:
             dict_game = {}
@@ -66,7 +84,7 @@ def main():
             dict_game = {}
             dict_game['appid'] = game_id
             game_info = json_dict[game_id]
-            dict_game['name'] = html.unescape(game_info['name'].strip())
+            dict_game['name'] = slugify(game_info['name'].strip())
             dict_game['review_score'] = game_info['review_score']
             dict_game['review_desc'] = game_info['review_desc']
             dict_game['reviews_total'] = game_info['reviews_total']
@@ -93,17 +111,13 @@ def main():
         df = pd.DataFrame(dict_games)
         df.to_csv(f"Exports/wishlist_{user_id}.csv", sep='\t')
 
-    logger.debug("Writing JSON file")
-    with open('Exports/steam_all_games.json', 'w') as f:
-        json.dump(json_dict, f)
-
     logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Steam script')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
-    parser.add_argument('-t', '--type', help="Type of ids to export", type=str)
+    parser.add_argument('-t', '--type', help="Type of ids to export (all, owned or wishlist)", type=str)
     parser.set_defaults(boolean_flag=False)
     args = parser.parse_args()
 
