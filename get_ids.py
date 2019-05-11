@@ -34,6 +34,7 @@ def slugify(value, allow_unicode=False):
 def main():
     args = parse_args()
     type = args.type
+    user_id = args.user_id
     if not type:
         logger.error("-t/--type argument required. Exiting.")
         exit()
@@ -43,11 +44,29 @@ def main():
 
     logger.debug("Reading config file")
     config = configparser.ConfigParser()
-    config.read('config.ini')
-    api_key = config['steam']['api_key']
-    user_id = config['steam']['user_id']
+    try:
+        config.read('config.ini')
+    except Exception as e:
+        logger.error("No config file found. Be sure you have a config.ini file.")
+        exit()
+    try:
+        api_key = config['steam']['api_key']
+    except Exception as e:
+        logger.error("No api_key found. Check your config file.")
+        exit()
+
+    logger.debug("Reading user_id")
+    if user_id:
+        user_id = user_id
+    else:
+        try:
+            user_id = config['steam']['user_id']
+        except Exception as e:
+            logger.error("No user specified. Specify a user_id directive in your config file or use the -u/--user_id flag")
+            exit()
 
     Path("Exports").mkdir(parents=True, exist_ok=True)
+
     if type == 'all':
         logger.debug("Type : all")
         url = f"http://api.steampowered.com/ISteamApps/GetAppList/v0002/?key={api_key}&format=json"
@@ -118,6 +137,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Steam script')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-t', '--type', help="Type of ids to export (all, owned or wishlist)", type=str)
+    parser.add_argument('-u', '--user_id', help="User id to extract the games info from (steamID64)", type=str)
     parser.set_defaults(boolean_flag=False)
     args = parser.parse_args()
 
