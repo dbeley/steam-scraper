@@ -5,7 +5,6 @@ import logging
 import time
 import argparse
 import configparser
-import json
 import requests
 import re
 import unicodedata
@@ -29,6 +28,39 @@ def slugify(value, allow_unicode=False):
         value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
     value = re.sub(r'[^\w\s-]', '', value).strip().lower()
     return re.sub(r'[-\s]+', '-', value)
+
+
+def get_all_ids(api_key):
+    url = f"http://api.steampowered.com/ISteamApps/GetAppList/v0002/?key={api_key}&format=json"
+    json_dict = requests.get(url).json()
+    dict_games = []
+    for game in json_dict['applist']['apps']:
+        dict_game = {}
+        dict_game['appid'] = game['appid']
+        dict_games.append(dict_game)
+    return dict_games
+
+
+def get_owned_ids(api_key, user_id):
+    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={user_id}&format=json"
+    json_dict = requests.get(url).json()
+    dict_games = []
+    for game in json_dict['response']['games']:
+        dict_game = {}
+        dict_game['appid'] = game['appid']
+        dict_games.append(dict_game)
+    return dict_games
+
+
+def get_wishlist_ids(user_id):
+    url = f"https://store.steampowered.com/wishlist/profiles/{user_id}/wishlistdata/?p=0"
+    json_dict = requests.get(url).json()
+    dict_games = []
+    for game_id in json_dict:
+        dict_game = {}
+        dict_game['appid'] = game_id
+        dict_games.append(dict_game)
+    return dict_games
 
 
 def main():
@@ -69,86 +101,20 @@ def main():
 
     if type == 'all':
         logger.debug("Type : all")
-        url = f"http://api.steampowered.com/ISteamApps/GetAppList/v0002/?key={api_key}&format=json"
-        json_dict = requests.get(url).json()
-        logger.debug("Writing CSV file")
-        with open('Exports/ids_all_games.csv', 'w') as f:
-            f.write("appid\tName")
-            for game in json_dict['applist']['apps']:
-                f.write(f"{game['appid']}\t{game['name']}\n")
+        dict_games = get_all_ids(api_key)
     elif type == 'owned':
         logger.debug("Type : owned")
-        url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={user_id}&format=json"
-        json_dict = requests.get(url).json()
-        dict_games = []
-        for game in json_dict['response']['games']:
-            dict_game = {}
-            dict_game['appid'] = game['appid']
-            dict_game['playtime_forever'] = game['playtime_forever']
-            try:
-                dict_game['playtime_2weeks'] = game['playtime_2weeks']
-            except Exception as e:
-                dict_game['playtime_2weeks'] = '0'
-            dict_games.append(dict_game)
-
-        df = pd.DataFrame(dict_games)
-        df.to_csv(f"Exports/ids_owned_games_{user_id}.csv", sep='\t')
+        dict_games = get_owned_ids(api_key, user_id)
     elif type == 'wishlist':
         logger.debug("Type : wishlist")
-        url = f"https://store.steampowered.com/wishlist/profiles/{user_id}/wishlistdata/?p=0"
-        json_dict = requests.get(url).json()
-
-        dict_games = []
-        for game_id in json_dict:
-            dict_game = {}
-            dict_game['appid'] = game_id
-            game_info = json_dict[game_id]
-            dict_game['name'] = slugify(game_info['name'].strip())
-            dict_game['review_score'] = game_info['review_score']
-            dict_game['review_desc'] = game_info['review_desc']
-            dict_game['reviews_total'] = game_info['reviews_total']
-            dict_game['reviews_percent'] = game_info['reviews_percent']
-            dict_game['release_date'] = game_info['release_date']
-            dict_game['release_string'] = game_info['release_string']
-            dict_game['review_css'] = game_info['review_css']
-            dict_game['priority'] = game_info['priority']
-            dict_game['tags'] = game_info['tags']
-            try:
-                dict_game['win'] = game_info['win']
-            except Exception as e:
-                dict_game['win'] = '0'
-            try:
-                dict_game['mac'] = game_info['mac']
-            except Exception as e:
-                dict_game['mac'] = '0'
-            try:
-                dict_game['linux'] = game_info['linux']
-            except Exception as e:
-                dict_game['linux'] = '0'
-            dict_games.append(dict_game)
-
-        df = pd.DataFrame(dict_games)
-        df.to_csv(f"Exports/wishlist_{user_id}.csv", sep='\t')
+        dict_games = get_wishlist_ids(user_id)
     elif type == 'both':
         logger.debug("Type : both")
-        url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={user_id}&format=json"
-        json_dict = requests.get(url).json()
-        dict_games = []
-        for game in json_dict['response']['games']:
-            dict_game = {}
-            dict_game['appid'] = game['appid']
-            dict_games.append(dict_game)
+        dict_games = get_owned_ids(api_key, user_id)
+        dict_games += get_wishlist_ids(user_id)
 
-        url = f"https://store.steampowered.com/wishlist/profiles/{user_id}/wishlistdata/?p=0"
-        json_dict = requests.get(url).json()
-
-        for game_id in json_dict:
-            dict_game = {}
-            dict_game['appid'] = game_id
-            dict_games.append(dict_game)
-
-        df = pd.DataFrame(dict_games)
-        df.to_csv(f"Exports/both_{user_id}.csv", sep='\t')
+    df = pd.DataFrame(dict_games)
+    df.to_csv(f"Exports/ids_{type}_{user_id}.csv", sep='\t')
 
     logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
