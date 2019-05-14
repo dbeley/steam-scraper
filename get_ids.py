@@ -123,7 +123,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Steam script')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-t', '--type', help="Type of ids to export (all, owned, wishlist or both (owned and wishlist))", type=str)
-    parser.add_argument('-u', '--user_id', help="User id to extract the games info from (steamID64)", type=str)
+    parser.add_argument('-u', '--user_id', help="User id to extract the games info from (steamID64). Default : user in config.ini", type=str)
     parser.set_defaults(boolean_flag=False)
     args = parser.parse_args()
 
