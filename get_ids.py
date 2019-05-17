@@ -65,13 +65,11 @@ def get_wishlist_ids(user_id):
 
 def main():
     args = parse_args()
-    type = args.type
-    user_id = args.user_id
-    if not type:
+    if not args.type:
         logger.error("-t/--type argument required. Exiting.")
         exit()
-    elif type not in ["all", "owned", "wishlist", "both"]:
-        logger.error(f"Type {type} not supported. Exiting.")
+    elif args.type not in ["all", "owned", "wishlist", "both"]:
+        logger.error("Type %s not supported. Exiting.", args.type)
         exit()
 
     logger.debug("Reading config file")
@@ -88,8 +86,8 @@ def main():
         exit()
 
     logger.debug("Reading user_id")
-    if user_id:
-        user_id = user_id
+    if args.user_id:
+        user_id = args.user_id
     else:
         try:
             user_id = config['steam']['user_id']
@@ -99,22 +97,22 @@ def main():
 
     Path("Exports").mkdir(parents=True, exist_ok=True)
 
-    if type == 'all':
+    if args.type == 'all':
         logger.debug("Type : all")
         dict_games = get_all_ids(api_key)
-    elif type == 'owned':
+    elif args.type == 'owned':
         logger.debug("Type : owned")
         dict_games = get_owned_ids(api_key, user_id)
-    elif type == 'wishlist':
+    elif args.type == 'wishlist':
         logger.debug("Type : wishlist")
         dict_games = get_wishlist_ids(user_id)
-    elif type == 'both':
+    elif args.type == 'both':
         logger.debug("Type : both")
         dict_games = get_owned_ids(api_key, user_id)
         dict_games += get_wishlist_ids(user_id)
 
     df = pd.DataFrame(dict_games)
-    df.to_csv(f"Exports/ids_{type}_{user_id}.csv", sep='\t')
+    df.to_csv(f"Exports/ids_{args.type}_{user_id}.csv", sep='\t')
 
     logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
