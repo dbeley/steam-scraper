@@ -1,4 +1,4 @@
-# steam-scripts
+# steam-scraper
 
 ## Requirements
 
