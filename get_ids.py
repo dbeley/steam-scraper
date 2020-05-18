@@ -117,7 +117,7 @@ def main():
         dict_games += get_wishlist_ids(user_id)
 
     df = pd.DataFrame(dict_games)
-    df.to_csv(f"Exports/ids_{args.type}_{user_id}.csv", sep="\t")
+    df.to_csv(f"Exports/ids_{args.type}_{user_id}.csv", sep="\t", index=False)
 
     logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 

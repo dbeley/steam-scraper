@@ -6,7 +6,15 @@
 - pandas
 - unicode
 
-Needs a config.ini file with valid steam api keys (see config_sample.ini for an example).
+Needs a config.ini file with a valid steam api key and a steam id (see config_sample.ini for an example).
+
+- Sample config.ini file :
+
+```
+[steam]
+api_key=api_key_here
+user_id=user_id_ere
+```
 
 ## get_ids.py
 
